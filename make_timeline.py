@@ -1,4 +1,11 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
+
+# -----------------------------------------
+#  _____ _           _ _
+# |_   _(_)_ __  ___| (_)_ _  ___
+#   | | | | '  \/ -_) | | ' \/ -_)
+#   |_| |_|_|_|_\___|_|_|_||_\___|
+# -----------------------------------------
 
 import parsedatetime
 import svgwrite
@@ -10,7 +17,13 @@ import sys
 import tkinter
 import tkinter.font as tkFont
 
-import argparse
+# ==========================================================================
+# A few definitions to aid development:
+"""
+callout_size = Size of lines leading to callout label.
+fudge = Still no damn idea
+"""
+# --------------------------------------------------------------------------
 
 class Colors:
 	black = '#000000'
@@ -41,12 +54,17 @@ class Timeline:
 		self.date1 = self.end_date[0] + padding
 		self.total_secs = (self.date1 - self.date0).total_seconds()
 		# set up some params
-		# self.callout_multiplier = 75
-		# self.callout_width = int(self.width) / int(self.callout_multiplier)
-		# self.callout_height = int(self.callout_width) * 1.5
-		# self.callout_size = (self.callout_width, self.callout_height, 10) # width, height, increment
-		self.callout_size = (20, 30, 20)
-		self.text_fudge = (6, 3)
+		self.callout_multiplier = 75
+		self.callout_width = int(self.width) / int(self.callout_multiplier)
+		self.callout_height = int(self.callout_width) * 1.5
+		self.callout_increment = int(self.width) / int(self.callout_multiplier)
+		self.callout_size = (self.callout_width, self.callout_height, self.callout_increment) # width, height, increment
+		# self.callout_size = (10, 15, 10)
+		# self.fudge_multplier = 25
+		# self.fudge2 = int(self.width) / int(self.fudge_multplier)
+		# self.fudge1 = int(self.fudge2) * 2
+		# self.text_fudge = (self.fudge1, self.fudge2)
+		self.text_fudge = (3, 1.5)
 		self.tick_format = self.data.get('tick_format', None)
 		self.markers = {}
 		# initialize Tk so that font metrics will work
@@ -54,7 +72,7 @@ class Timeline:
 		self.fonts = {}
 		# max_label_height stores the max height of all axis labels
 		# and is used in the final height computation in build(self)
-		self.max_label_height = 24
+		self.max_label_height = 0
 
 	def build(self):
 		# MAGIC NUMBER: y_era
@@ -122,7 +140,7 @@ class Timeline:
 			horz = self.drawing.add(self.drawing.line((x0, y_era), (x1, y_era), stroke=fill, stroke_width=0.75))
 			horz['marker-start'] = start_marker.get_funciri()
 			horz['marker-end'] = end_marker.get_funciri()
-			self.drawing.add(self.drawing.text(name, insert=(0.5*(x0 + x1), y_era - self.text_fudge[1]), stroke='none', fill=fill, font_family="Helevetica", font_size="10pt", text_anchor="middle"))
+			self.drawing.add(self.drawing.text(name, insert=(0.5*(x0 + x1), y_era - self.text_fudge[1]), stroke='none', fill=fill, font_family="FreeMono", font_size="10pt", text_anchor="middle"))
 
 	def get_markers(self, color):
 		# create or get marker objects
@@ -182,8 +200,8 @@ class Timeline:
 		# add label
 		fill = kwargs.get('fill', Colors.gray)
 		transform = "rotate(180, %i, 0)" % (x)
-		self.g_axis.add(self.drawing.text(label, insert=(x, -2*dy), stroke='none', fill=fill, font_family='Helevetica', font_size='10pt', text_anchor='end', writing_mode='tb', transform=transform))
-		h = self.get_text_metrics('Helevetica', 6, label)[0] + 2*dy
+		self.g_axis.add(self.drawing.text(label, insert=(x, -2*dy), stroke='none', fill=fill, font_family='FreeMono', font_size='10pt', text_anchor='end', writing_mode='tb', transform=transform))
+		h = self.get_text_metrics('FreeMono', 6, label)[0] + 2*dy
 		self.max_label_height = max(self.max_label_height, h)
 
 	def create_callouts(self):
@@ -216,16 +234,16 @@ class Timeline:
 			# figure out what 'level" to make the callout on
 			k = 0
 			i = len(prev_x) - 1
-			left = x - (self.get_text_metrics('Helevetica', 6, event)[0] + self.callout_size[0] + self.text_fudge[0])
+			left = x - (self.get_text_metrics('FreeMono', 6, event)[0] + self.callout_size[0] + self.text_fudge[0])
 			while left < prev_x[i] and i >= 0:
-				k = max(k, prev_level[i] + 1)
-				i -= 1
+                                k = max(k, prev_level[i] + 1)
+                                i -= 1
 			y = 0 - self.callout_size[1] - k*self.callout_size[2]
 			min_y = min(min_y, y)
 			#self.drawing.add(self.drawing.circle((left, y), stroke='red', stroke_width=2))
 			path_data = 'M%i,%i L%i,%i L%i,%i' % (x, 0, x, y, x - self.callout_size[0], y)
 			self.g_axis.add(self.drawing.path(path_data, stroke=event_color, stroke_width=1, fill='none'))
-			self.g_axis.add(self.drawing.text(event, insert=(x - self.callout_size[0] - self.text_fudge[0], y + self.text_fudge[1]), stroke='none', fill=event_color, font_family='Helevetica', font_size='6pt', text_anchor='end'))
+			self.g_axis.add(self.drawing.text(event, insert=(x - self.callout_size[0] - self.text_fudge[0], y + self.text_fudge[1]), stroke='none', fill=event_color, font_family='FreeMono', font_size='10pt', text_anchor='end'))
 			self.add_axis_label(event_date, str(event_date[0]), tick=False, fill=Colors.black)
 			self.g_axis.add(self.drawing.circle((x, 0), r=4, stroke=event_color, stroke_width=1, fill='white'))
 			prev_x.append(x)
